@@ -1,15 +1,23 @@
-setwd("/Users/swati/Desktop/MachineLearning/Project 1")
-data <- read.csv("ObesityDataSet_raw_and_data_sinthetic.csv")
 
-View(data)
+swati_dir <-"/Users/amirbouslama/Documents/DTU_ml/ML-DTU-p1"
+amir_dir <-"/Users/swati/Desktop/MachineLearning/Project 1"
+
+swati_data_path <- "resources/obesity_raw.csv"
+amir_data_path <- "ObesityDataSet_raw_and_data_sinthetic.csv"
+
+setwd()
+data <- read.csv()
+
 
 # Load the required libraries
 library(dplyr)
 library(ggplot2)
 library(factoextra)
-
+library(FactoMineR)
+library(ggpubr)
+library(tidyverse)
 # Read the CSV file
-data <- read.csv("ObesityDataSet_raw_and_data_sinthetic.csv")
+#data <- read.csv("ObesityDataSet_raw_and_data_sinthetic.csv")
 
 # View the data
 View(data)
@@ -34,7 +42,7 @@ data <- data %>%
          FHWO=as.factor(family_history_with_overweight)) #Making a short form for it as well for convenience
 
 # Checking summary of the data again
-kable(summary(data))
+table(summary(data))
 table(data$Gender, data$MTRANS)
 table(data$Gender, data$CALC)
 table(data$CAEC)
@@ -86,12 +94,11 @@ cor_matrix <- cor(data %>% select_if(is.numeric), use = "pairwise.complete.obs")
 
 # Creating a heat map
 heatmap(cor_matrix, 
-        col = colorRampPalette(c("steelblue", "white", "white"))(100),
+        col = colorRampPalette(c("steelblue", "purple", "orange"))(100),
         main = "Correlation Heatmap of Continuous Variables",
         xlab = "Continuous Variables",
-        ylab = "Continuous Variables")
-
-
+        ylab = "Continuous Variables",
+        )
 # PCA (Principal Component Analysis)
 # Perform PCA on numeric variables
 pca_result <- PCA(data %>% select_if(is.numeric), scale.unit = TRUE, graph = TRUE)
@@ -101,5 +108,24 @@ pca <- prcomp(data %>% select_if(is.numeric), scale=TRUE)
 fviz_pca_biplot(pca, geom = "point", label = "var", col.var = "black", col.ind = data$NObeyesdad, repel = TRUE) + 
   ggtitle("PCA Biplot After Scaling of Continuous Variables")
 
+
+
+
+## Normalisation (to normal distribution)
+
+data$Age <- scale(data$Age) 
+data$Height <- scale(data$Height)
+data$Weight <- scale(data$Weight)
+## Probabilities and frequencies
+
+
+hist(data$Age)
+hist(data$Height)
+hist(data$Weight)
+barplot(table(data$Gender) / length(data$Gender))
+barplot(table(data$family_history_with_overweight) / length(data$family_history_with_overweight))
+
 # ----------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------
+
+
