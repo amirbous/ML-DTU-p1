@@ -1,12 +1,13 @@
 
-swati_dir <-"/Users/amirbouslama/Documents/DTU_ml/ML-DTU-p1"
-amir_dir <-"/Users/swati/Desktop/MachineLearning/Project 1"
+amir_dir <-"/Users/amirbouslama/Documents/DTU_ml/ML-DTU-p1"
+swati_di <-"/Users/swati/Desktop/MachineLearning/Project 1"
 
-swati_data_path <- "resources/obesity_raw.csv"
-amir_data_path <- "ObesityDataSet_raw_and_data_sinthetic.csv"
+amir_data_path<- "resources/obesity_raw.csv"
+swati_data_path <- "ObesityDataSet_raw_and_data_sinthetic.csv"
 
-setwd()
-data <- read.csv()
+
+setwd(amir_dir)
+data <- read.csv(amir_data_path)
 
 
 # Load the required libraries
@@ -16,6 +17,7 @@ library(factoextra)
 library(FactoMineR)
 library(ggpubr)
 library(tidyverse)
+library(gdata)
 # Read the CSV file
 #data <- read.csv("ObesityDataSet_raw_and_data_sinthetic.csv")
 
@@ -116,6 +118,38 @@ fviz_pca_biplot(pca, geom = "point", label = "var", col.var = "black", col.ind =
 data$Age <- scale(data$Age) 
 data$Height <- scale(data$Height)
 data$Weight <- scale(data$Weight)
+
+
+## binary attributes 
+
+data$family_history_with_overweight <-ifelse(data$family_history_with_overweight=="yes",1,0)
+
+
+data$FAVC <-ifelse(data$FAVC=="yes",1,0)
+data$SCC <-ifelse(data$SCC=="yes",1,0)
+data$SMOKE <-ifelse(data$SMOKE=="yes",1,0)
+data$FHWO <-ifelse(data$FHWO=="yes",1,0)
+
+unique(data$Gender)
+data$Gender <- data$Gender <-ifelse(data$Gender=="Female",0,1)
+## Metrics for rows with classes
+
+#Alcohol consumption
+unique(data$CALC)
+fac <- factor(data$CALC, levels = c("no", "Sometimes", "Frequently", "Always"))
+data$CALC <- as.numeric(fac) - 1
+
+#means of transportation
+unique(data$MTRANS)
+fac <- factor(data$MTRANS, levels = c("Walking", "Bike", "Public_Transportation", "Motorbike", "Automobile"))
+fac <- as.numeric(fac) - 1
+data$MTRANS <- ifelse(fac >= 3, fac - 1, fac)
+
+# food between meals
+unique <- unique(data$CAEC)
+fac <- factor(data$CAEC, levels = c("no", "Sometimes", "Frequently", "Always"))
+data$CAEC <- as.numeric(fac) - 1
+View(data)
 ## Probabilities and frequencies
 
 
