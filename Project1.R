@@ -153,7 +153,7 @@ table(data$Obesity.Type)
 
 # Adjusted BMI status, BMI, and BMI.status columns are no longer needed so removing them
 data <- data %>%
-  select(-c(Adjusted_BMI_Status, BMI))
+  select(-c(Adjusted_BMI_Status))
 
 
 # Correcting the sequence of obesity levels in factor
@@ -305,7 +305,7 @@ heatmap(cor_matrix,
         cexCol=1.25)
 
 # Principal Component Analysis (PCA)
-pca <- prcomp(data %>% select_if(is.numeric), scale=FALSE)
+pca <- prcomp(data %>% select_if(is.numeric) %>% select(-c(BMI)), scale=FALSE)
 
 # Define a palette with seven distinct colors
 # display.brewer.all()
