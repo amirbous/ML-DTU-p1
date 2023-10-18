@@ -1,4 +1,5 @@
 # Regularization
+library(caret)
 
 colnames(data)
 head(data)
@@ -54,7 +55,6 @@ Error_train <- rep(NA, K)
 Error_test <- rep(NA, K)
 Error_train_nofeatures <- rep(NA, K)
 Error_test_nofeatures <- rep(NA, K)
-
 
 for (k in 1:K) {
   paste("Crossvalidation fold ", k, "/", K, sep = "")
