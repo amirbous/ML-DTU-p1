@@ -1,6 +1,6 @@
 
 amir_dir <-"/Users/amirbouslama/Documents/DTU_ml/ML-DTU-p1"
-swati_dir <-"/Users/swati/Desktop/MachineLearning/Project 1"
+swati_dir <-"/Users/swati/Desktop/MachineLearning/1/ML-DTU-p1/ML-DTU-p1"
 
 amir_data_path<- "resources/obesity_raw.csv"
 swati_data_path <- "ObesityDataSet_raw_and_data_sinthetic.csv"
