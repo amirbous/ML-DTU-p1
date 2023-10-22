@@ -21,7 +21,7 @@ attributeNames <- colnames(X)
 # Cross-validation
 
 # Create cross-validation partition for evaluation of performance of optimal model
-K <- 5
+K <- 10
 
 # Set seed for reproducibility
 set.seed(123)
