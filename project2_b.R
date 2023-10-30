@@ -6,6 +6,8 @@ rm(list = ls())
 ##library for cross validation
 
 library(caret)
+library(pracma)
+
 
 ##reading modified data
 
@@ -46,13 +48,12 @@ T <- M + 1
 
 # Initialize variables
 
+temp <- rep(NA, M * KK)
+#all_w <- array(temp, c(M, T, KK))
 
-temp <- rep(NA, M * T * KK)
-w <- array(temp, c(M, T, KK))
-Error_train2 <- matrix(rep(NA, times = T * KK), nrow = T)
-Error_test2 <- matrix(rep(NA, times = T * KK), nrow = T)
 
-w_rlr <- matrix(rep(NA, times = M * K), nrow = M)
+
+ws_final <- matrix(rep(NA, times = K * M), nrow = M)
 Error_train_rlr <- rep(NA, K)
 Error_test_rlr <- rep(NA, K)
 w_noreg <- matrix(rep(NA, times = M * K), nrow = M)
@@ -60,6 +61,12 @@ mu <- matrix(rep(NA, times = (M - 1) * K), nrow = K)
 sigma <- matrix(rep(NA, times = (M - 1) * K), nrow = K)
 Error_train <- rep(NA, K)
 Error_test <- rep(NA, K)
+
+
+## constructing the model:
+# Standard linear regression
+
+# lambdas = 
 
 for (k in 1:K) {
   paste("Crossvalidation fold ", k, "/", K, sep = "")
@@ -80,8 +87,33 @@ for (k in 1:K) {
   CV2$TrainSize <- c()
   CV2$ValidateSize <- c()
   
+  ## find omega vector that gives the min 
+  
+  X_train_default <- X_train[CV2$which != 1,]
+  
+  y_train_default <- y_train[CV2$which != 1]
+  X_validate_default <- X_train[CV2$which == 1, ]
+  y_validate_default <- y_train[CV2$which == 1]
+  
+  Xty_default <- t(X_train_default) %*% y_train_default
+  XtX_default <- t(X_train_default) %*% X_train_default
+
+  w_optimal <- solve(XtX_default) %*% Xty_default
+  error_vector <- c()
+  for (kx in 1:(length(X_validate_default[, 1]) - 1)){
+    error_vector[kx] = y_validate[kx] - dot(w_optimal, X_validate_default[kx, ])
+
+  }
+  
+  MSE_min <- (sum(error_vector^2))/length(y_validate_default)
+  
+  
+  ## extracting the best model in the inner loop
   
   for (kk in 1:KK) {
+    
+    ## in this inner loop, the goal is 
+    
     X_train_inner <- X_train[CV2$which != kk, ]
     y_train_inner <- y_train[CV2$which != kk]
     X_validate <- X_train[CV2$which == kk, ]
@@ -93,16 +125,25 @@ for (k in 1:K) {
     Xty_inner <- t(X_train_inner) %*% y_train_inner
     XtX_inner <- t(X_train_inner) %*% X_train_inner
     
+    w_curr <- solve(XtX_inner) %*% Xty_inner
+    error_curr <- c()
+    for (kx in 1:(length(X_validate[, 1]) - 1)){
+      error_curr <- append(error_curr, y_validate[kx] - dot(w_curr, X_validate[kx, ]))
+    }
+    print(error_curr)
+    MSE_curr <- (sum(error_curr^2))/length(y_validate)
+
+    if (MSE_curr <= MSE_min) {
+        MSE_min <- MSE_curr
+        w_optimal <- w_curr
+    }
   }
+  ws_final[, k] <- w_optimal 
   
-  # Define lambda for testing
-  #lambda <- 0.5
+
   
   # Assuming your data is already standardized and scaled, you don't need to standardize it again.
   # Simply copy the subsets.
-  
-  X_train_inner <- X_train[CV2$which != kk, ]
-  X_test_inner <- X_train[CV2$which == kk, ]
   
   # Estimate w for the optimal value of lambda
   Xty <- t(X_train) %*% y_train
@@ -158,7 +199,7 @@ writeLines(paste("- R^2 test:", (sum(Error_test_nofeatures) - sum(Error_test_rlr
 
 writeLines("Weights in last fold :")
 for (m in 1:M) {
-  writeLines(paste(attributeNames[m], w_rlr[m, k]))
+  writeLines(paste(attributeNames[m], ws_final[m, k]))
 }
 
 
