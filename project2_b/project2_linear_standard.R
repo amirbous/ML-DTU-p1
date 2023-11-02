@@ -1,32 +1,10 @@
 # Regularization
 
 
+rm(list = ls()) # Clear work space
 library(caret)
 
-amir_dir <-"/Users/amirbouslama/Documents/DTU_ml/ML-DTU-p1"
-swati_dir <-"/Users/swati/Desktop/MachineLearning/1/ML-DTU-p1/ML-DTU-p1"
-
-amir_data_path<- "resources/obesity_raw.csv"
-swati_data_path <- "ObesityDataSet_raw_and_data_sinthetic.csv"
-
-
-# setwd(amir_dir)
-# data <- read.csv(amir_data_path)
-
-setwd(amir_dir)
-data <- read.csv(amir_data_path)
-na.omit(data)
-colnames(data)
-head(data)
-class(data)
-
-# Define the feature matrix X and the target variable y
-X <- data[, (names(data) %in% c("Gender", "Age", "SMOKE", "MTRANS"))]
-X <- as.matrix(X)
-y <- data$Weight
-N <- nrow(data)  # Number of samples
-M <- ncol(X)  # Number of features
-attributeNames <- colnames(X)
+source("project2_b/read_data.R")
 
 # Include an additional attribute corresponding to the offset
 # X <- cbind(rep(1, N), X)
@@ -54,7 +32,7 @@ lambda_tmp <- 10^(-5:8)
 # Initialize variables
 
 KK <- 10 # Inner loop
-T <- M + 1
+T <-  length(lambda_tmp)
 temp <- rep(NA, M * T * KK)
 w <- array(temp, c(M, T, KK))
 Error_train2 <- matrix(rep(NA, times = T * KK), nrow = T)
@@ -162,13 +140,12 @@ for (k in 1:K) {
     par(cex.lab = 1) # Define size of axis labels
     par(cex.axis = 1) # Define size of axis labels
     par(mar = c(5, 4, 3, 1) + .1) # Increase margin size to allow for larger axis labels
-    
     plot(log(lambda_tmp), w_mean[2, ],
          xlab = "log(lambda)",
          ylab = "Coefficient Values", main = paste("Weights, fold ", k, "/", K),
          ylim = c(min(w_mean[-1, ]), max(w_mean[-1, ]))
     )
-    lines(log(lambda_tmp), w_mean[2, ])
+
     
     colors_vector <- colors()[c(1, 50, 26, 59, 101, 126, 151, 551, 71, 257, 506, 634, 639, 383)]
     
@@ -179,18 +156,21 @@ for (k in 1:K) {
     
     plot(log(lambda_tmp), log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)),
          xlab = "log(lambda)", ylab = "log(Error)",
-         main = paste0("Optimal lambda: 1e", log10(lambda_opt[k]))
+         main = paste0("Optimal lambda: 1e", log10(lambda_opt[k])),
+         ylim = c((min(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize))) - 0.5):(
+           max(log(apply(Error_test2, 1, sum) / sum(CV2$TestSize))) + 0.5)
+         )
     )
     
     lines(log(lambda_tmp), log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))
     points(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
     lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
     
-    legend("bottomright", legend = c("Training", "Test"), col = c("black", "red"), lty = 1)
+    legend("bottomright", legend = c("Training", "Test"), col = c("black", "red"), lty = 1,
+           cex=0.5)
     
   }
 }
-
 # Display Results
 writeLines("Linear regression without feature selection:")
 writeLines(paste("- Training error: ", sum(Error_train) / sum(CV$TrainSize)))
@@ -209,4 +189,8 @@ writeLines("Weights in last fold :")
 for (m in 1:M) {
   writeLines(paste(attributeNames[m], w_rlr[m, k]))
 }
+
+## Rpepeat the same process a better choice of lambdas
+
+
 
