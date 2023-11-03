@@ -29,7 +29,7 @@ CV$TrainSize <- c()
 CV$TestSize <- c()
 
 # Values of lambda
-lambda_tmp <- 10^((-10:-2)/8)
+lambda_tmp <- 10^((20:60)/64)
 
 # Initialize variables
 
@@ -137,37 +137,38 @@ for (k in 1:K) {
     w_mean <- apply(w, c(1, 2), mean)
     
     # Plot weights as a function of the regularization strength (not offset)
-    par(mfrow = c(1, 2))
-    par(cex.main = 1.5) # Define size of title
-    par(cex.lab = 1) # Define size of axis labels
-    par(cex.axis = 1) # Define size of axis labels
-    par(mar = c(5, 4, 3, 1) + .1) # Increase margin size to allow for larger axis labels
-    plot(log(lambda_tmp), w_mean[2, ],
-         xlab = "log(lambda)",
-         ylab = "Coefficient Values", main = paste("Weights, fold ", k, "/", K),
-         ylim = c(min(w_mean[-1, ]), max(w_mean[-1, ]))
-    )
+    # par(mfrow = c(1, 2))
+    # par(cex.main = 1.5) # Define size of title
+    # par(cex.lab = 1) # Define size of axis labels
+    # par(cex.axis = 1) # Define size of axis labels
+    # par(mar = c(5, 4, 3, 1) + .1) # Increase margin size to allow for larger axis labels
+    # plot(log(lambda_tmp), w_mean[2, ],
+    #      xlab = "log(lambda)",
+    #      ylab = "Coefficient Values", main = paste("Weights, fold ", k, "/", K),
+    #      ylim = c(min(w_mean[-1, ]), max(w_mean[-1, ]))
+    # )
     
     
     colors_vector <- colors()[c(1, 50, 26, 59, 101, 126, 151, 551, 71, 257, 506, 634, 639, 383)]
     
-    for (i in 3:M) {
-      points(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
-      lines(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
-    }
+    # for (i in 3:M) {
+    #   points(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
+    #   lines(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
+    # }
     print(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))
     print(log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)))
-    plot(log(lambda_tmp), log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)),
+    
+    plot(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TrainSize)),
          xlab = "log(lambda)", ylab = "log(Error)",
          main = paste0("Optimal lambda: 1e", log10(lambda_opt[k])),
-         ylim = c((min(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))),
-                     (max(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize))))
-          )
+         # ylim = c((min(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))),
+         #             (max(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize))))
+         #  )
      )
     
-    lines(log(lambda_tmp), log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))
-    points(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
-    lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
+    lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TrainSize)))
+#    points(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
+#    lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
     
     legend("bottomright", legend = c("Training", "Test"), col = c("black", "red"), lty = 1,
            cex=0.5)
