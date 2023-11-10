@@ -157,8 +157,8 @@ for (k in 1:K) {
     plot(log(lambda_tmp), log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)),
          xlab = "log(lambda)", ylab = "log(Error)",
          main = paste0("Optimal lambda: 1e", log10(lambda_opt[k])),
-         ylim = c((min(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize))) - 0.5):(
-           max(log(apply(Error_test2, 1, sum) / sum(CV2$TestSize))) + 0.5)
+         ylim = c((min(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))),(
+           max(log(apply(Error_test2, 1, sum) / sum(CV2$TestSize))))
          )
     )
     
