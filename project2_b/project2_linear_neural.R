@@ -18,7 +18,7 @@ library(caret)
 NHiddenUnits <- 1
 
 Error <- rep(NA, times = K)
-
+Outer_model <- rep(NA, times = K)
 
 model <- function() { 
   nn_sequential(
@@ -46,37 +46,24 @@ for (k in 1:K) {
   
   
   # Build Neural Network 
+
   
-  tmp_df = data.frame(c("target", y_train), c("Gender", X_train[, 1]), 
-                      c("Age", X_train[, 2]), c("family_history_with_overweight", X_train[, 3]),
-                      c("FAVC", X_train[, 4]), c("FCVC", X_train[, 5]), c("SMOKE", X_train[, 5]),
-                      c("MTRANS", X_train[, 6])
-  )
-  result <- neuralnet(target ~ Gender + Age + family_history_with_overweight + 
+  ##inner protocol for constructing the model
+  tmp_df = data.frame(y_train, X_train[, 1], X_train[, 2], X_train[, 3], X_train[, 4],
+                      X_train[, 5], X_train[, 6],  X_train[, 7], X_train[, 8])
+  names(tmp_df) = c("target", "Gender", "Height", "Age", "SMOKE",
+                    "MTRANS", "family_history_with_overweight",
+                    "FAVC", "FCVC")
+  result_model <- neuralnet(target ~ Gender + Age + family_history_with_overweight + 
                         FAVC + FCVC + SMOKE + MTRANS,
-                  data = tmp_df, hidden = 1, 
+                  data = tmp_df, hidden = 3, 
                   linear.output = TRUE) 
   
-  print(result)
-  print(paste("Best loss:", result$final_loss))
   
-  # Predict model on test data
-  y_sigmoid = result$net(X_test)
-  y_test_est <- as.integer(y_sigmoid > 0.5)
   
-  # Compute error rate
-  Error[k] <- sum(as.integer(y_test) != y_test_est)
+  prediction_model <- predict(result_model, X_test)
+  
+  MSE <- sum((y_test - prediction_model)^2)/length(y_test)
+  
 }
 
-# Print the error rate
-print(paste("Error rate: ", sum(Error) / sum(CV$TestSize) * 100, "%", sep = ""))
-
-# Display the decision boundary (given for last cross-validation fold)
-predictionFunction <- function(X_train, net) {
-  X_train <- as.matrix(X_train)
-  probs <- matrix(as.array(net(X_train)), nrow = sqrt(dim(X_train)[1]), byrow = FALSE)
-  probs
-}
-
-dbplot(X, attributeNames, predictionFunction, y = y,
-       contourLevels = 0.5, contourCols = "white", net = result$net)
