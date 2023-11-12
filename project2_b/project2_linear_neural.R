@@ -22,7 +22,6 @@ Generalised_test_err_hidden <- rep(NA, times = 10)
 Generalised_train_err_hidden <- rep(NA, times = 10)
 
 # Variable for classification error
-Error <- rep(NA, times = K)
 
 
 
@@ -32,11 +31,11 @@ Error <- rep(NA, times = K)
 for (i in 1:length(NHiddenUnits)){
   test_error <- rep(NA, times = 10)
   training_error <- rep(NA, times = 10)
-  model <- function() { 
+  model <- function() {  
     nn_sequential(
-      nn_linear(M, NHiddenUnits[i]),
+      nn_linear(M, i),
       nn_tanh(),
-      nn_linear(NHiddenUnits[i], 1),
+      nn_linear(i, 1),
       nn_sigmoid()
     )
   }
@@ -75,11 +74,6 @@ for (i in 1:length(NHiddenUnits)){
       
       CV2$TrainSize[kk] <- length(y_train)
       CV2$TestSize[kk] <- length(y_test2)
-      result <- train_neural_net(model, loss_fn, X_train2, y_train2,
-                                 max_iter = 10000, n_replicates = 3)
-      
-      y_sigmoid2 = result$net(X_test2)
-    
     
       #tmp_df = data.frame(y_train2, X_train2[, 1], X_train2[, 2], X_train2[, 3], X_train2[, 4],
     #                      X_train2[, 5], X_train2[, 6],  X_train2[, 7], X_train2[, 8])
@@ -99,9 +93,10 @@ for (i in 1:length(NHiddenUnits)){
       result_model <- train_neural_net(model, loss_fn, X_train2, y_train2,
                                        max_iter = 10000, n_replicates = 3)
       
-      y_sigmoid2 <- result$net(X_test2)
+      X_test2 <- as.matrix(X_test2)
+      prediction_result <- matrix(as.array(result_model$net(X_test2)))
       
-      MSE_validate <- as.numeric(sum((y_test2 - y_sigmoid2)^2)/length(y_test2 - y_sigmoid2))
+      MSE_validate <- as.numeric(sum((y_test2 - prediction_result)^2)/length(y_test2))
       if (k == 1) {
         inner_MSE_min <- MSE_validate
         chosen_inner_model <- result_model
@@ -112,10 +107,14 @@ for (i in 1:length(NHiddenUnits)){
       }
     }
     
-    prediction_model_train <- chosen_inner_model$net(X_train)
-    prediction_model_test <- chosen_inner_model$net(X_test)
-    training_error[k] <- as.numeric(sum((y_train - prediction_model_train)^2)/length(y_train - prediction_model_train))
-    test_error[k] <- as.numeric(sum((y_test - prediction_model_test)^2)/length(y_test - prediction_model_train))
+    X_test <- as.matrix(X_train)
+    X_train <- as.matrix(X_train)
+    
+    
+    prediction_model_train <- matrix(as.array(result_model$net(X_train)))
+    prediction_model_test <- matrix(as.array(result_model$net(X_test)))
+    training_error[k] <- as.numeric(sum((y_train - prediction_model_train)^2)/length(y_train))
+    test_error[k] <- as.numeric(sum((y_test - prediction_model_test)^2)/length(y_test))
   }
   Generalised_test_err_hidden[i] <- sum(test_error) / K
   Generalised_train_err_hidden[i] <- sum(training_error) / K
@@ -124,21 +123,22 @@ for (i in 1:length(NHiddenUnits)){
 
 plot(c(1:10), log(Generalised_train_err_hidden),
      xlab = "iteration", ylab = "log(Error)", col = "red",
-     ylim = c(min(log(Generalised_train_err_hidden)), max(log(Generalised_train_err_hidden))),
+     ylim = c(min(log(Generalised_train_err_hidden)), max(log(Generalised_test_err_hidden))),
 )
 lines(c(1:10), log(Generalised_test_err_hidden), col = "black")
 points(c(1:10), log(Generalised_test_err_hidden), col = "black")
 lines(c(1:10), log(Generalised_train_err_hidden), col = "red")
 
-#legend("right", legend = c("Training", "Test"), col = c("black", "red"), lty = 1,
-#       cex=0.5)
+
+
+legend("right", legend = c("Training", "Test"), col = c("black", "red"), lty = 1,
+       cex=0.5)
 
 
 
 
 
 
-## Model
 
 
 
