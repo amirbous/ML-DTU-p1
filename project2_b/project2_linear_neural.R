@@ -139,7 +139,3 @@ legend("right", legend = c("Training", "Test"), col = c("black", "red"), lty = 1
 
 
 
-
-
-
-
