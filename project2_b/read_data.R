@@ -23,3 +23,13 @@ y <- data$Weight
 N <- nrow(data)  # Number of samples
 M <- ncol(X)  # Number of features
 attributeNames <- colnames(X)
+
+set.seed(123)
+
+K <- 5
+
+CV <- list()
+CV$which <- createFolds(y, k = K, list = F)
+
+CV$TrainSize <- c()
+CV$TestSize <- c()

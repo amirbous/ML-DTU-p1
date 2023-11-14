@@ -2,8 +2,7 @@
 
 # Regularization
 
-
-rm(list = ls()) # Clear work space
+# Clear work space
 library(caret)
 
 source("project2_b/read_data.R")
@@ -15,21 +14,9 @@ source("project2_b/read_data.R")
 
 # Cross-validation
 
-# Create cross-validation partition for evaluation of performance of optimal model
-K <- 10
-
-# Set seed for reproducibility
-set.seed(123)
-
-CV <- list()
-CV$which <- createFolds(y, k = K, list = F)
-
-# Set up vectors that will store sizes of training and test sizes
-CV$TrainSize <- c()
-CV$TestSize <- c()
 
 # Values of lambda
-lambda_tmp <- 10^((20:60)/64)
+lambda_tmp <- 10^((30:52)/64)
 
 # Initialize variables
 
@@ -48,8 +35,8 @@ mu <- matrix(rep(NA, times = (M - 1) * K), nrow = K)
 sigma <- matrix(rep(NA, times = (M - 1) * K), nrow = K)
 Error_train <- rep(NA, K)
 Error_test <- rep(NA, K)
-Error_train_nofeatures <- rep(NA, K)
-Error_test_nofeatures <- rep(NA, K)
+Error_cross_lambda <- matrix(0, nrow = length(lambda_tmp), ncol = K)
+Error_test_per_fold <- rep(NA, K)
 
 for (k in 1:K) {
   paste("Crossvalidation fold ", k, "/", K, sep = "")
@@ -105,8 +92,6 @@ for (k in 1:K) {
   # Assuming your data is already standardized and scaled, you don't need to standardize it again.
   # Simply copy the subsets.
   
-  X_train2 <- X_train[CV2$which != kk, ]
-  X_test2 <- X_train[CV2$which == kk, ]
   
   # Estimate w for the optimal value of lambda
   Xty <- t(X_train) %*% y_train
@@ -127,35 +112,18 @@ for (k in 1:K) {
   Error_train[k] <- sum((y_train - X_train %*% w_noreg[, k])^2)
   Error_test[k] <- sum((y_test - X_test %*% w_noreg[, k])^2)
   
-  # Compute squared error without using the input data at all
-  Error_train_nofeatures[k] <- sum((y_train - mean(y_train))^2)
-  Error_test_nofeatures[k] <- sum((y_test - mean(y_train))^2)
-  
+
   if (k == K) {
     dev.new()
     # Display result for cross-validation fold
     w_mean <- apply(w, c(1, 2), mean)
-    
-    # Plot weights as a function of the regularization strength (not offset)
-    # par(mfrow = c(1, 2))
-    # par(cex.main = 1.5) # Define size of title
-    # par(cex.lab = 1) # Define size of axis labels
-    # par(cex.axis = 1) # Define size of axis labels
-    # par(mar = c(5, 4, 3, 1) + .1) # Increase margin size to allow for larger axis labels
-    # plot(log(lambda_tmp), w_mean[2, ],
-    #      xlab = "log(lambda)",
-    #      ylab = "Coefficient Values", main = paste("Weights, fold ", k, "/", K),
-    #      ylim = c(min(w_mean[-1, ]), max(w_mean[-1, ]))
-    # )
-    
-    
+  
     colors_vector <- colors()[c(1, 50, 26, 59, 101, 126, 151, 551, 71, 257, 506, 634, 639, 383)]
-    
-    # for (i in 3:M) {
-    #   points(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
-    #   lines(log(lambda_tmp), w_mean[i, ], col = rainbow(T)[i])
-    # }
+    print("chosen lambdas per fold")
+    print(lambda_opt)
+    print("Train Error")
     print(log(apply(Error_train2, 1, sum) / sum(CV2$TrainSize)))
+    print("Test Error")
     print(log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)))
     
     plot(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TrainSize)),
@@ -166,6 +134,7 @@ for (k in 1:K) {
          #  )
      )
     
+    
     lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TrainSize)))
 #    points(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
 #    lines(log(lambda_tmp), log(apply(Error_test2, 1, sum) / sum(CV2$TestSize)), col = "red")
@@ -175,25 +144,4 @@ for (k in 1:K) {
     
   }
 }
-# Display Results
-# writeLines("Linear regression without feature selection:")
-# writeLines(paste("- Training error: ", sum(Error_train) / sum(CV$TrainSize)))
-# writeLines(paste("- Test error", sum(Error_test) / sum(CV$TestSize)))
-# writeLines(paste("- R^2 train:     %8.2f\n", (sum(Error_train_nofeatures) - sum(Error_train)) / sum(Error_train_nofeatures)))
-# writeLines(paste("- R^2 test:     %8.2f\n", (sum(Error_test_nofeatures) - sum(Error_test)) / sum(Error_test_nofeatures)))
-# 
-# writeLines("Regularized Linear regression:")
-# writeLines(paste("- Training error:", sum(Error_train_rlr) / sum(CV$TrainSize)))
-# writeLines(paste("- Test error:", sum(Error_test_rlr) / sum(CV$TestSize)))
-# writeLines(paste("- R^2 train: ", (sum(Error_train_nofeatures) - sum(Error_train_rlr)) / sum(Error_train_nofeatures)))
-# writeLines(paste("- R^2 test:", (sum(Error_test_nofeatures) - sum(Error_test_rlr)) / sum(Error_test_nofeatures)))
-# 
-# 
-# writeLines("Weights in last fold :")
-# for (m in 1:M) {
-#   writeLines(paste(attributeNames[m], w_rlr[m, k]))
-# }
-
-
-
 

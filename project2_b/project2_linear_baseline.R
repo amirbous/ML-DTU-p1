@@ -1,22 +1,19 @@
-rm(list = ls()) # Clear work space
+# Clear work space
 library(caret)
-
+rm(list = ls()) # Clear work space
 ##reading the data
 source("project2_b/read_data.R")
-
-
 
 library(MASS)
 
 # Package for Cross-Validation
 library(caret)
 
-
 chosen_inner_model <- 0
 inner_MSE_min <- 0
 
-test_error <- rep(NA, times = 10)
-training_error <- rep(NA, times = 10)
+test_error <- rep(NA, times = K)
+training_error <- rep(NA, times = K)
   
   ## Constructig the model
   for (k in 1:K) { 
@@ -25,17 +22,13 @@ training_error <- rep(NA, times = 10)
     y_test <- y[CV$which == k]
     CV$TrainSize[k] <- length(y_train)
     CV$TestSize[k] <- length(y_test)
-    
-    
-    
-    
+  
     KK <- 10
     
     CV2 <- list()
     CV2$which <- createFolds(y_train, k = KK, list = F)
     CV2$TrainSize <- c()
     CV2$TestSize <- c()
-    
     
     for (kk in 1:KK) {
       print(paste("Crossvalidation fold ", k, "/", K, sep = ""))
@@ -49,7 +42,6 @@ training_error <- rep(NA, times = 10)
       
      result_model <- mean(y_train2) 
 
-      
       MSE_validate <- as.numeric(sum((y_test2 - result_model)^2)/length(y_test2))
       if (k == 1) {
         inner_MSE_min <- MSE_validate
@@ -60,37 +52,17 @@ training_error <- rep(NA, times = 10)
         chosen_inner_model <- result_model
       }
     }
-    
-
-    
-    
-  
     training_error[k] <- as.numeric(sum((y_train - chosen_inner_model)^2)/length(y_train))
     test_error[k] <- as.numeric(sum((y_test - chosen_inner_model)^2)/length(y_test))
   }
 
-
-
-
-plot(c(1:10), log(training_error),
+plot(c(1:K), log(training_error),
      xlab = "iteration", ylab = "log(Error)", col = "red",
      ylim = c(min(c(log(training_error),log(test_error))), max(c(log(training_error),log(test_error)))
 ))
-lines(c(1:10), log(test_error), col = "black")
-points(c(1:10), log(test_error), col = "black")
-lines(c(1:10), log(training_error), col = "red")
+lines(c(1:K), log(test_error), col = "black")
+points(c(1:K), log(test_error), col = "black")
+lines(c(1:K), log(training_error), col = "red")
 
-
-
-legend("right", legend = c("Training", "Test"), col = c("black", "red"), lty = 1,
+legend("right", legend = c("Test", "Train"), col = c("black", "red"), lty = 1,
        cex=0.5)
-
-
-
-
-
-
-
-
-
-
