@@ -63,13 +63,18 @@ optimal_number_of_layer <- rep(NA, times = K)
       CV2$TrainSize[kk] <- length(y_train)
       CV2$TestSize[kk] <- length(y_test2)
       
-      for(h in NHiddenUnits){
-        
+      #for(h in NHiddenUnits){
+        h <- 2
         model <- function() {  
           nn_sequential(
-            nn_linear(M, h),
+            nn_linear(M, 64),
             nn_tanh(),
-            nn_linear(h, 1)
+            nn_linear(64, 32),
+            nn_tanh(),
+            nn_linear(32, 32),
+            nn_tanh(),
+            nn_linear(32, 1)
+            # Linear activation for regression
           )
         }
         loss_fn <- nn_mse_loss()
@@ -82,12 +87,12 @@ optimal_number_of_layer <- rep(NA, times = K)
       #result_model <- train_neural_net(model, loss_fn, as.matrix(X_train2), y_train2,
       #                                 max_iter = 10000, n_replicates = 3)
       
-      result_model <- train_neural_net(model, loss_fn, as.matrix(X_train2), y_train2,
+      result_model <- train_neural_net(model, loss_fn, as.matrix(X_train2), torch_tensor(as.matrix(y_train2)),
                                  max_iter = 5000, n_replicates = 2)
       
       
       prediction_result <- matrix(as.array(result_model$net(X_test2)))
-      MSE_validate <- as.numeric(sum((y_test2 - prediction_result)^2)/length(y_test2))
+      MSE_validate <- as.numeric(loss_fn(torch_tensor(y_test2) ,torch_tensor(prediction_result)))
       
       ##These if statement are to get the optimal parameter
       if (k == 1) {
@@ -101,16 +106,16 @@ optimal_number_of_layer <- rep(NA, times = K)
         chosen_inner_model <- result_model
         optimal_h <- h
         }
-      }
+      
     }
     
-    optimal_number_of_layer[k] <- optimal_h
+   # optimal_number_of_layer[k] <- optimal_h
     
     
-    prediction_model_train <- as.numeric(chosen_inner_model$net(X_train))
-    prediction_model_test <- as.numeric(chosen_inner_model$net(X_test))
-    training_error[k] <- as.numeric(sum((y_train - prediction_model_train)^2)/length(y_train))
-    test_error[k] <- as.numeric(sum((y_test - prediction_model_test)^2)/length(y_test))
+    prediction_model_train <- as.numeric(chosen_inner_model$net(torch_tensor(X_train)))
+    prediction_model_test <- as.numeric(chosen_inner_model$net(torch_tensor(X_test)))
+    training_error[k] <- as.numeric(loss_fn(torch_tensor(y_train) ,torch_tensor(prediction_model_train)))
+    test_error[k] <- as.numeric(loss_fn(torch_tensor(y_test) ,torch_tensor(prediction_model_test)))
   }
 
 plot(prediction_model_test, y_test)
