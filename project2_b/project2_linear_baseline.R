@@ -12,8 +12,8 @@ library(caret)
 chosen_inner_model <- 0
 inner_MSE_min <- 0
 
-test_error <- rep(NA, times = K)
-training_error <- rep(NA, times = K)
+test_error_baseline <- rep(NA, times = K)
+training_error_baseline <- rep(NA, times = K)
   
   ## Constructig the model
   for (k in 1:K) { 
@@ -52,17 +52,17 @@ training_error <- rep(NA, times = K)
         chosen_inner_model <- result_model
       }
     }
-    training_error[k] <- as.numeric(sum((y_train - chosen_inner_model)^2)/length(y_train))
-    test_error[k] <- as.numeric(sum((y_test - chosen_inner_model)^2)/length(y_test))
+    training_error_baseline[k] <- as.numeric(sum((y_train - chosen_inner_model)^2)/length(y_train))
+    test_error_baseline[k] <- as.numeric(sum((y_test - chosen_inner_model)^2)/length(y_test))
   }
 
-plot(c(1:K), log(training_error),
+plot(c(1:K), log(training_error_baseline),
      xlab = "iteration", ylab = "log(Error)", col = "red",
-     ylim = c(min(c(log(training_error),log(test_error))), max(c(log(training_error),log(test_error)))
+     ylim = c(min(c(log(training_error_baseline),log(test_error_baseline))), max(c(log(training_error_baseline),log(test_error_baseline)))
 ))
-lines(c(1:K), log(test_error), col = "black")
-points(c(1:K), log(test_error), col = "black")
-lines(c(1:K), log(training_error), col = "red")
+lines(c(1:K), log(test_error_baseline), col = "black")
+points(c(1:K), log(test_error_baseline), col = "black")
+lines(c(1:K), log(training_error_baseline), col = "red")
 
 legend("right", legend = c("Test", "Train"), col = c("black", "red"), lty = 1,
        cex=0.5)
