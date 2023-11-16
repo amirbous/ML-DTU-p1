@@ -1,0 +1,551 @@
+# Classification Comparison of a baseline model, ANN model, and logistic regression (multinomial) model
+
+===================================================
+
+## Fixing the Data
+
+===================================================
+
+The data we use contains different obesity factors, and also divides subjects into obesity types based on these variables. The classification problem is whether or not we can predict the obesity type based on the other factors.
+
+## Loading libraries
+
+```{r}
+#| eval: false
+#| echo: false
+#| message: false
+
+library(plyr)
+library(readr)
+library(dplyr)
+library(caret)
+library(caTools)
+library(nnet)
+library(randomForest)
+library(class)
+library(keras)
+library(ggplot2)
+library(gridExtra)
+library(pROC)
+```
+
+Load in data here if not already loaded in from Project 1
+
+```{r}
+## Uncomment if you want to look at the data used
+#glimpse(data)
+```
+
+We have double-precision and factor variables. This is fine, so we continue.
+
+## Data Partitioning
+
+```{r}
+# Setting random seed
+set.seed(123)
+
+# Creating training and testing set
+split_samp <- sample.split(data$Obesity.Type, SplitRatio = 0.7)
+train <- subset(data, split_samp==TRUE) # the 70% 
+test <- subset(data, split_samp==FALSE) # the 30%
+
+# two rows with missing data in test set, so imputing data with predicted imputation
+test <- na.omit(test)
+
+# Viewing new data sets
+print(dim(train)); print(dim(test))
+```
+
+```{r}
+# Boxplot showing the training set and data set 
+
+boxplot(train$Obesity.Type, test$Obesity.Type, names = c("Training", "Testing"),
+        ylab = "Obesity.Type", main = "Distribution of Obesity.Type (Training vs. Testing)",
+        col = c("lavender", "lavender"), border = "black")
+
+```
+```{r}
+# Identifying numerical and categorical variables
+train_num_var <- sapply(train, is.numeric)
+train_cat_var <- sapply(train, is.factor)
+test_num_var <- sapply(test, is.numeric)
+test_cat_var <- sapply(test, is.factor)
+
+train_numeric <- train |>
+  select_if(train_num_var)
+
+train_categorical <- train |>
+  select_if(train_cat_var)
+
+test_numeric <- test |>
+  select_if(test_num_var)
+
+test_categorical <- test |>
+  select_if(test_cat_var)
+```
+
+
+
+
+===================================================
+
+## Building models
+
+===================================================
+
+### Logistic Regression Model (Multi Class)
+
+```{r}
+# Setting the reference
+train$Obesity.Type <- relevel(train$Obesity.Type, ref = "Normal_Weight")
+
+# Building model
+logreg_model <- multinom(Obesity.Type ~ ., data = train, decay = 3.522695)
+
+coefficients <- coef(logreg_model)
+
+print(coefficients)
+```
+
+```{r}
+# Converting coefficients to odds - taking exponential of coefficients
+exp(coef(logreg_model))
+
+# Checking top 6 observations
+head(round(fitted(logreg_model), 2))
+
+```
+
+### ANN model
+
+I will be using early stopping to prevent overfitting and also learning rate scheduling which reduces the learning rate as training progresses in order to help ann converge more smoothly and avoid overshooting the minimum loss function. - NOPE 
+
+```{r}
+#ann_model <- nnet(
+ # Obesity.Type ~ .,
+  #data = train,
+  #size = 3,
+  #linout = FALSE,
+  #MaxNWts = 10000,
+  #MaxIt = 100,
+  #decay = 0.0001,
+  #trace = FALSE)
+
+# Specify parameters
+learning_rates <- c(0.01, 0.1, 0.2, 0.5)
+K <- 10 #number of folds for cross validation
+epochs_settings <- c(50, 200, 600, 800, 1000)
+results_list <- list()
+results_epoch <- data.frame(Epochs = integer(0), LearningRate = numeric(0), MeanTestLoss = numeric(0))
+
+
+# train to collect history
+for (epoch in epochs_settings){
+
+  
+  # create history
+  history <- list(train_loss = numeric(epoch), test_loss = numeric(epoch), train_accuracy = numeric(epoch), test_accuracy = numeric(epoch))
+  
+  #Performing K-fold cross validation for each learning rate
+  for (lr in learning_rates) {
+    #initialize variables 
+    test_loss <- numeric(K)
+    
+    #cross validation
+    for (fold in 1:K){
+      # Train ann with learning rate
+      ann_model <- nnet(
+        Obesity.Type ~ .,
+        data = train,
+        size = 4,
+        linout = FALSE,
+        MaxNWts = 10000,
+        MaxIt = epoch,
+        trace = FALSE,
+        learnrate = lr
+        )
+      
+      val_preds <- predict(ann_model, newdata = test, type = "class")
+      val_true_labels <- test$Obesity.Type
+      val_loss <- sum(val_true_labels != val_preds)
+    
+      # store test loss 
+      test_loss[fold] <- val_loss
+    }
+  
+    # Calculate mean loss 
+    mean_test_loss <- mean(test_loss)
+    
+    # Append results to df
+    results_epoch <- rbind(results_epoch, data.frame(Epochs = epoch, LearningRate = lr, MeanTestLoss = mean_test_loss))
+  
+  }
+  
+  results_list[[as.character(epoch)]] <- results_epoch
+  
+}  
+
+```
+
+```{r}
+#| message: false
+#| echo: false 
+
+# Creating plot
+MeanLossPlot <- ggplot(data = do.call(rbind, results_list), aes(x = Epochs, y = MeanTestLoss, color = factor(LearningRate))) +
+  #geom_line() +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, size = 1) +
+  labs(x = "Epochs", y = "Mean Validation Loss") +
+  scale_color_discrete(name = "Learning Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# saving plot 
+ggsave("MeanLoss_final.png", plot = MeanLossPlot, width = 6, height = 4)
+
+```
+
+Now I make another ANN model for the predictions
+```{r}
+# Specifying params
+K1 <- 10 # outer folds for cross val
+h_val <- c(5, 5, 2, 2, 1) # hidden units (h) same as regression
+lambda_val <- c(0.001, 0.01, 0.1, 0.2, 0.5) # regularization parameters
+
+ann_model2 <- nnet(
+  Obesity.Type ~ .,
+  data = train,
+  size = h,
+  linout = FALSE,
+  MaxNWts = 10000,
+  MaxIt = 575,
+  decay = lambda,
+  trace = FALSE,
+  learnrate = 0.01)
+
+```
+
+
+
+### Baseline Model
+
+```{r}
+# finding majority class
+maj_class <- levels(train$Obesity.Type)[which.max(table(train$Obesity.Type))]
+
+# Creating baseline model
+baseline_model <- function(train) {
+  base_preds <- rep(maj_class, nrow(train))
+  return(base_preds)
+}
+
+```
+
+===================================================
+
+## Prediction and Validation
+
+===================================================
+
+### Logistic Regression
+
+```{r}
+# Summarizing
+summary(logreg_model)
+
+# Baseline Accuracy
+prop.table(table(train$Obesity.Type))
+```
+
+Residual Deviance: 99.99361 AIC: 375.9936
+
+```{r}
+# Predictions
+logreg_preds <- predict(logreg_model, newdata = test, type = "class")
+
+# Confusion matrix
+logreg_confmat <- confusionMatrix(data = logreg_preds, reference = test$Obesity.Type)
+
+# Accuracy
+logreg_acc <- logreg_confmat$overall["Accuracy"]
+
+```
+
+### ANN
+
+```{r}
+# Summarizing
+#summary(ann_model2)
+
+# Predictions
+ann_preds <- predict(ann_model2, newdata = test, type = "class")
+
+# Accuracy 
+ann_acc <- sum(ann_preds == test$Obesity.Type) / nrow(test)
+
+```
+
+### Baseline
+
+```{r}
+base_preds <- baseline_model(test)
+
+base_acc <- mean(base_preds == test$Obesity.Type)
+```
+
+## Accuracy
+
+```{r}
+cat("Accuracy ANN:", ann_acc, "\n")
+cat("Accuracy LogReg:", logreg_acc, "\n")
+cat("Baseline accuracy:", base_acc)
+```
+
+Accuracy Baseline: 0.1745602 
+Accuracy LogReg: 0.9461173 
+Accuracy ANN: 0.9175911
+
+===============================================================
+
+# Statistical Evaluation
+
+===============================================================
+
+## Two-Layer Cross-Validation
+```{r}
+  # Specifying params
+K1 <- 10 # outer folds for cross val
+h_val <- c(5, 5, 2, 2, 1) # hidden units (h) same as regression
+lambda_val <- c(0.001, 0.01, 0.1, 0.2, 0.5) # regularization parameters
+baseline_results = data.frame(OuterFold = integer(0), ErrorRate = numeric(0))
+ann_results = data.frame(OuterFold = integer(0), HiddenUnits = integer(0), ErrorRate = numeric(0))
+logreg_results = data.frame(OuterFold = integer(0), Lambda = numeric(0), ErrorRate = numeric(0))
+
+# Accuracy
+accuracy_function <- function(predicted_labels, true_labels) {
+  correct_predictions <- sum(predicted_labels == true_labels)
+  total_predictions <- length(predicted_labels)
+  accuracy <- correct_predictions / total_predictions
+  return(accuracy)
+}
+
+# BASELINE 
+maj_class <- levels(train$Obesity.Type)[which.max(table(train$Obesity.Type))]
+
+# Define functions for models outside the loop
+baseline_model <- function(train_data1) {
+  base_preds <- rep(maj_class, nrow(train_data1))
+  return(base_preds)
+}
+
+# ANN
+ann_model2 <- function(train_data1, h, lambda) {
+  ann_model <- nnet(
+    Obesity.Type ~ .,
+    data = train_data1,
+    size = h,
+    linout = FALSE,
+    MaxNWts = 10000,
+    MaxIt = 575,
+    decay = lambda,
+    trace = FALSE,
+    learnrate = 0.01)
+  
+ann_preds <- predict(ann_model, newdata = test_data1, type = "class")
+  return(ann_preds)
+}
+
+# LOGREG
+logreg_model <- function(train_data1, lambda) {
+  logreg_model <- multinom(Obesity.Type ~ ., data = train_data1, decay = lambda)
+  logreg_preds <- predict(logreg_model, newdata = test_data1, type = "class")
+  return(logreg_preds)
+}
+
+
+
+base_err_rate <- numeric()
+ann_err_rate <- numeric(length(h_val) * length(lambda_val))
+logreg_err_rate <- numeric()
+
+
+# Outer loop
+for (fold_index in 1:K1) {
+  # Creating training and testing set
+  set.seed(fold_index)
+  split_samp <- sample.split(data$Obesity.Type, SplitRatio = 0.7)
+  train_data1 <- subset(data, split_samp==TRUE) # the 70%
+  test_data1 <- subset(data, split_samp==FALSE) # the 30%
+
+# two rows with missing data in test set, so imputing data with predicted imputation
+  test_data1 <- na.omit(test_data1)
+  
+  # Split data
+  #train_ind <- unlist(folds[-fold_index])
+  #test_ind <- folds[[fold_index]]
+  
+  #train_data <- data[train_ind, ]
+  #test_data <- data[test_ind, ]
+  
+  # Inner loop
+  for (h in h_val) {
+    for (lambda in lambda_val) {
+      # Train and evaluate baseline model
+      base_preds <- baseline_model(train_data1)
+      base_err_rate <- c(base_err_rate, 1 - accuracy_function(base_preds, test_data1$Obesity.Type))
+
+      # Train and evaluate ANN model
+      ann_preds <- ann_model2(train_data1, h, lambda)
+      ann_err_rate <- c(ann_err_rate, 1 - accuracy_function(ann_preds, test_data1$Obesity.Type))
+      
+      ann_results <- rbind(ann_results, data.frame(OuterFold = fold_index, HiddenUnits = h, ErrorRate = 1 - accuracy_function(ann_preds, test_data1$Obesity.Type)))
+
+      # Train and evaluate logistic regression model
+      logreg_preds <- logreg_model(train_data1, lambda)
+      logreg_err_rate <- c(logreg_err_rate, 1 - accuracy_function(logreg_preds, test_data1$Obesity.Type))
+      
+      logreg_results <- rbind(logreg_results, data.frame(OuterFold = fold_index, Lambda = lambda, ErrorRate = logreg_err_rate))
+    }
+  }
+  # Store in df
+  baseline_results <- rbind(baseline_results, data.frame(OuterFold = fold_index, ErrorRate = base_err_rate))
+  #ann_results <- rbind(ann_results, data.frame(OuterFold = fold_index, HiddenUnits = h, ErrorRate = ann_err_rate))
+  #logreg_results <- rbind(logreg_results, data.frame(OuterFold = fold_index, Lambda = lambda, ErrorRate = logreg_err_rate))
+  
+}
+
+```
+```{r}
+best_baseline_results <- data.frame()
+for (fold in unique(baseline_results$OuterFold)) {
+  fold_data <- subset(baseline_results, OuterFold == fold)
+  best_err_rate_index <- which.min(fold_data$ErrorRate)
+  best_err_rate_row <- fold_data[best_err_rate_index, ]
+  best_baseline_results <- rbind(best_baseline_results, best_err_rate_row)
+}
+
+best_ann_results <- data.frame()
+for (fold in unique(ann_results$OuterFold)) {
+  fold_data <- subset(ann_results, OuterFold == fold)
+  best_err_rate_index <- which.min(fold_data$ErrorRate)
+  best_err_rate_row <- fold_data[best_err_rate_index, ]
+  best_ann_results <- rbind(best_ann_results, best_err_rate_row)
+}
+
+best_logreg_results <- data.frame()
+for (fold in unique(logreg_results$OuterFold)) {
+  fold_data <- subset(logreg_results, OuterFold == fold)
+  best_err_rate_index <- which.min(fold_data$ErrorRate)
+  best_err_rate_row <- fold_data[best_err_rate_index, ]
+  best_logreg_results <- rbind(best_logreg_results, best_err_rate_row)
+}
+
+
+
+# Print or save the resulting data frames as tables
+print(best_baseline_results)
+print(best_ann_results)
+print(best_logreg_results)
+
+```
+## McNemera's Test
+### Statistical test 11.3.2, p value and confidence intervals for pairwise tests 
+
+```{r}
+# Making contingency tables
+set.seed(123)
+true_labels <- sample(1:7, 100, replace = TRUE) 
+ann_predictions <- sample(1:7, 100, replace = TRUE)
+logreg_predictions <- sample(1:7, 100, replace = TRUE)
+base_predictions <- sample(1:7, 100, replace=TRUE)
+
+# Calculating accuracy
+accuracy_ann <- sum(ann_predictions == true_labels) / length(true_labels)
+accuracy_logreg <- sum(logreg_predictions == true_labels) / length(true_labels)
+
+accuracy_base <- sum(base_predictions == true_labels) / length(true_labels)
+
+# Display accuracy 
+print("Accuracy (ANN):")
+print(accuracy_ann)
+print("Accuracy (Logistic Regression):")
+print(accuracy_logreg)
+print("Accuracy (Baseline):")
+print(accuracy_base)
+
+```
+```{r}
+num_fold <- 10
+
+pred_vars <- names(data)[names(data) != "Obesity.Type"]
+
+model_fom <- list()
+coef_est <- list()
+p <- list()
+conf_int <- list()
+
+all_pred_form <- as.formula(paste("Obesity.Type ~", paste(pred_vars, collapse = " + ")))
+
+model_form$AllPredictors <- all_pred_form
+
+pairwise_p_values <- matrix(0, nrow = length(model_fom), ncol = length(model_fom))
+pairwise_conf_intervals <- list()
+
+# k fold cross val
+for (i in 1:length(model_fom)) {
+  model1_fom <- model_fom[[i]]
+  
+  p_comp <- list()
+  conf_int_comp <- list()
+  
+  for (j in 1:length(model_fom)) {
+    model2_fom <- model_fom[[j]]
+    
+    if (i == j) {
+      p_comp[[j]] <- NA
+      conf_int_comp[[j]] <- NA
+      next
+    }
+    
+    coef_est <- matrix(0, nrow = num_fold, ncol = length(pred_vars))
+    
+    p_val <- matrix(0, nrow = num_folds, ncol = length(pred_vars))
+    
+    for (k in 1:num_fold) {
+      train_data <- data[-folds[[k]], ]
+      validation_data <- data[folds[[k]], ]
+      
+      model1 <- ann_model2
+      model2 <- logreg_model
+      
+      log_likelihood_diff <- logLik(model1) - logLik(model2)
+      
+      p_val <- 1 - pchisq(2 * log_likelihood_diff, df = 1)
+      
+      p_vals[k, ] <- p_val
+    }
+    
+    avg_p_val <- mean(p_val)
+    
+    conf_int <- confint(model1, model2)
+    
+    p_values_for_comparison[[j]] <- avg_p_val
+    conf_intervals_for_comparison[[j]] <- conf_int
+  }
+  
+  pairwise_p_values[i, ] <- unlist(p_values_for_comparison)
+  pairwise_conf_intervals[[i]] <- conf_intervals_for_comparison
+  
+}
+
+
+
+
+
+
+
+```
+
+
+
+
