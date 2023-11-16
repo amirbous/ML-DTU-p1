@@ -1,0 +1,45 @@
+# Train LogReg Model (lambda = 3.522695)
+
+```{r}
+library(glmnet)
+```
+
+```{r}
+X <- data[, -which(names(data) == "Obesity.Type")]
+Y <- data$Obesity.Type
+
+dim(X)
+length(Y)
+
+set.seed(123)
+lambda_val = 0.001
+model <- glmnet(X, Y, family = "multinomial", alpha = 1, lambda= lambda_val)
+```
+
+```{r}
+coeffs_list <- list()
+
+unique_classes <- unique(Y)
+for (class in unique_classes) {
+    Y_binary <- ifelse(Y == class, 1, 0)
+  
+  # Train a logistic regression model for the current class
+  model <- glmnet(X, Y_binary, family = "binomial", alpha = 1, lambda = lambda_val)
+  
+  # Get the coefficients and store them in the list
+  coeffs_list[[as.character(class)]] <- coef(model, s = lambda_val)
+}
+
+for (class in unique_classes) {
+  cat("Class", i, "Top Features:\n")
+  coef_i <- coeffs_list[[as.character(class)]]
+  top_features <- order(abs(coef_i), decreasing = TRUE)[1:5]  # Top 5 features
+  feature_names <- colnames(X)
+  top_feature_names <- feature_names[top_features]
+  top_feature_weights <- coef_i[top_features]
+  top_features_df <- data.frame(Feature = top_feature_names, Weight = top_feature_weights)
+  print(top_features_df)
+  cat("\n")
+}
+```
+

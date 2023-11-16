@@ -1,0 +1,17 @@
+# Statistical Evaluation
+
+## Target variable
+```{r}
+target_var = "Obesity.type"
+```
+
+
+## Confusion matrix
+```{r}
+set.seed(123)
+actual = target_var[runif]
+```
+
+
+
+

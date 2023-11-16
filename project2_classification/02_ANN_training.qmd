@@ -1,0 +1,76 @@
+# Training of ANN 
+
+## Loading libraries 
+```{r}
+library(torch)
+```
+
+## Defining the ann model
+```{r}
+ann_model <- torch_nn_module()
+ann_model$add(torch_nn_linear(cols, 64))
+ann_model$add(torch_nn_relu())
+ann_model$add(torch_nn_linear(64, 32))
+ann_model$add(torch_nn_relu())
+ann_model$add(torch_nn_linear(32, 1))
+ann_model$add(torch_nn_sigmoid())  # sigmoid activation for binary classification
+
+# Create optimizer
+optimizer <- torch_optimizer_adam(ann_model$parameters(), lr = 0.01)
+
+# Variables for performance metrics
+accuracy_scores <- numeric(1000)
+learning_curves <- numeric(1000)
+
+# K-Fold Cross-Validation
+for (k in 1:K) {
+  # Splitting data based on cross-val fold
+  train_indices <- cv$which[[k]]
+  test_indices <- setdiff(1:nrow(data), train_indices)
+  
+  Feature_train <- feature_matrix[train_indices, ]
+  Target_train <- target_var[train_indices]
+  Feature_test <- feature_matrix[test_indices, ]
+  Target_test <- target_var[test_indices]
+  
+  # Train model on training set
+  for (epoch in 1:1000) { 
+    
+    # Define the forward pass
+    y_pred <- ann_model(Feature_train)
+    
+    # Compute the mean squared error loss
+    loss <- torch_mean((y_pred - torch_tensor(Target_train))^2)
+    
+    # Zero the gradients, perform backpropagation, and update the weights
+    optimizer$zero_grad()
+    loss$backward()
+    optimizer$step()
+  }
+  
+  # evaluating model on test data
+  y_pred_test <- ann_model(Feature_test)
+  accuracy_scores[k] <- mean((y_pred_test > 0.5) == Target_test)
+  
+  # Storing learning curve for this fold
+  learning_curves[[k]][epoch] <- loss$item
+}
+
+mean_accuracy <- mean(accuracy_scores)
+cat("Mean Accuracy:", mean_accuracy, "\n")
+
+# Store mean of validation losses for learning curve
+mean_learning_curve <- sapply(learning_curves, function(curve) curve[epoch])
+
+# Printing or saving mean learning curve
+print("Mean Learning Curve:")
+print(mean_learning_curve)
+
+# Store final loss
+final_loss <- mean_learning_curve(learning_curves[[k]])
+cat("Final Loss:", final_loss, "\n")
+
+
+```
+
+

@@ -1,0 +1,41 @@
+## Loading the data 
+
+### Removing NA data
+```{r}
+data <- na.omit(data)
+```
+### Defining feature matrix (feature_matrix) and target variable (target_var)
+```{r}
+feature_matrix <- data[, (names(data) %in% c("Gender", "Height", "Age", "SMOKE", "MTRANS", "family_history_with_overweight", "FAVC", "FVCV"))]
+
+feature_matrix <- as.matrix(feature_matrix)
+data$BinaryObesity <- ifelse(data$Obesity.Type %in% c("Insufficient_Weight", "Normal_Weight"), 1, 0)
+target_var <- data$BinaryObesity
+rows <- nrow(data)
+cols <- ncol(feature_matrix)
+attname <- colnames(feature_matrix)
+```
+
+Setting random seed 
+```{r}
+set.seed(123)
+```
+
+Setting K-fold 
+```{r}
+K <- 5
+
+
+cv <- list()
+
+cv$which <- createFolds(target_var, k = K, list = F)
+
+cv$TrainSize <- numeric(K)
+cv$TestSize <- numeric(K)
+```
+
+
+
+
+
+

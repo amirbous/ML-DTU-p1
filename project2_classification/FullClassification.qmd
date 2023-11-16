@@ -23,7 +23,7 @@ library(caTools)
 library(nnet)
 library(randomForest)
 library(class)
-library(keras)
+#library(keras)
 library(ggplot2)
 library(gridExtra)
 library(pROC)
@@ -201,7 +201,7 @@ MeanLossPlot <- ggplot(data = do.call(rbind, results_list), aes(x = Epochs, y = 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # saving plot 
-ggsave("MeanLoss_final.png", plot = MeanLossPlot, width = 6, height = 4)
+#ggsave("MeanLoss_final.png", plot = MeanLossPlot, width = 6, height = 4)
 
 ```
 
@@ -215,11 +215,11 @@ lambda_val <- c(0.001, 0.01, 0.1, 0.2, 0.5) # regularization parameters
 ann_model2 <- nnet(
   Obesity.Type ~ .,
   data = train,
-  size = h,
+  size = 4,
   linout = FALSE,
   MaxNWts = 10000,
   MaxIt = 575,
-  decay = lambda,
+  decay = 0.001,
   trace = FALSE,
   learnrate = 0.01)
 
@@ -310,6 +310,97 @@ Accuracy ANN: 0.9175911
 # Statistical Evaluation
 
 ===============================================================
+
+```{r}
+# Load necessary libraries
+library(lmtest)
+
+# Generate example data (replace this with your own dataset)
+set.seed(123)
+
+# Define the number of cross-validation folds
+num_folds <- 10
+
+# Get the list of predictor variable names (all variables except the response variable)
+predictor_vars <- names(data)[names(data) != "Obesity.Type"]
+
+# Create an empty list to store model formulas
+model_formulas <- list()
+
+# Generate a model formula that includes all predictor variables
+all_predictors_formula <- as.formula(paste("Obesity.Type ~", paste(predictor_vars, collapse = " + ")))
+
+# Add the all-predictors formula to the list of model formulas
+model_formulas$AllPredictors <- all_predictors_formula
+
+# Create a container to store p-values and confidence intervals for pairwise model comparisons
+pairwise_p_values <- matrix(NA, nrow = length(model_formulas), ncol = length(model_formulas))
+pairwise_conf_intervals <- matrix(NA, nrow = length(model_formulas), ncol = length(model_formulas))
+
+# Perform pairwise model comparisons using k-fold cross-validation
+folds <- createFolds(data$Obesity.Type, k = num_folds)
+
+for (i in 1:length(model_formulas)) {
+  model1_formula <- model_formulas[[i]]
+  
+  for (j in 1:length(model_formulas)) {
+    model2_formula <- model_formulas[[j]]
+    
+    # Skip self-comparisons
+    if (i == j) {
+      pairwise_p_values[i, j] <- NA
+      pairwise_conf_intervals[i, j] <- NA
+      next
+    }
+    
+    p_values <- numeric(num_folds)
+    conf_intervals <- matrix(0, nrow = num_folds, ncol = 2)
+    
+    for (k in 1:num_folds) {
+      train_data <- data[-folds[[k]], ]
+      test_data <- data[folds[[k]], ]
+      
+      # Fit the two models for comparison
+      model1 <- nnet(Obesity.Type ~ .,data = train,size = 5,linout = FALSE,MaxNWts = 10000,MaxIt = 575,decay = 0.001,trace = FALSE,learnrate = 0.01)
+      model2 <- multinom(Obesity.Type ~ ., data = train, decay = 3.522695)
+      
+      # Perform the likelihood ratio test (LRT)
+      lr_stat <- -2 * (logLik(model1) - logLik(model2))
+      
+      # Store the p-value and confidence interval
+      df <- df.residual(model1) - df.residual(model2)
+      p_values[k] <- pchisq(lr_stat, df = df, lower.tail = FALSE)
+      conf_intervals[k, ] <- lr_test$confint[, 2]  # Use the upper bound of the confidence interval
+    }
+    
+    # Calculate the average p-value over the cross-validation folds
+    avg_p_value <- mean(p_values, na.rm = TRUE)
+    
+    # Calculate the average confidence interval bounds over the cross-validation folds
+    avg_conf_interval <- colMeans(conf_intervals, na.rm = TRUE)
+    
+    # Store the average p-value and confidence interval
+    pairwise_p_values[i, j] <- avg_p_value
+    pairwise_conf_intervals[i, j] <- avg_conf_interval
+  }
+}
+
+# Display pairwise comparison results
+colnames(pairwise_p_values) <- colnames(pairwise_conf_intervals) <- names(model_formulas)
+rownames(pairwise_p_values) <- rownames(pairwise_conf_intervals) <- names(model_formulas)
+
+print("P-values for pairwise model comparisons:")
+print(pairwise_p_values)
+
+print("Confidence Intervals for pairwise model comparisons (Upper Bounds):")
+print(pairwise_conf_intervals)
+
+```
+
+
+
+
+
 
 ## Two-Layer Cross-Validation
 ```{r}
@@ -448,8 +539,8 @@ print(best_ann_results)
 print(best_logreg_results)
 
 ```
-## McNemera's Test
-### Statistical test 11.3.2, p value and confidence intervals for pairwise tests 
+## Correlated t-test
+### Statistical test 11.4.1, p value and confidence intervals for pairwise tests 
 
 ```{r}
 # Making contingency tables
@@ -474,77 +565,7 @@ print("Accuracy (Baseline):")
 print(accuracy_base)
 
 ```
-```{r}
-num_fold <- 10
 
-pred_vars <- names(data)[names(data) != "Obesity.Type"]
-
-model_fom <- list()
-coef_est <- list()
-p <- list()
-conf_int <- list()
-
-all_pred_form <- as.formula(paste("Obesity.Type ~", paste(pred_vars, collapse = " + ")))
-
-model_form$AllPredictors <- all_pred_form
-
-pairwise_p_values <- matrix(0, nrow = length(model_fom), ncol = length(model_fom))
-pairwise_conf_intervals <- list()
-
-# k fold cross val
-for (i in 1:length(model_fom)) {
-  model1_fom <- model_fom[[i]]
-  
-  p_comp <- list()
-  conf_int_comp <- list()
-  
-  for (j in 1:length(model_fom)) {
-    model2_fom <- model_fom[[j]]
-    
-    if (i == j) {
-      p_comp[[j]] <- NA
-      conf_int_comp[[j]] <- NA
-      next
-    }
-    
-    coef_est <- matrix(0, nrow = num_fold, ncol = length(pred_vars))
-    
-    p_val <- matrix(0, nrow = num_folds, ncol = length(pred_vars))
-    
-    for (k in 1:num_fold) {
-      train_data <- data[-folds[[k]], ]
-      validation_data <- data[folds[[k]], ]
-      
-      model1 <- ann_model2
-      model2 <- logreg_model
-      
-      log_likelihood_diff <- logLik(model1) - logLik(model2)
-      
-      p_val <- 1 - pchisq(2 * log_likelihood_diff, df = 1)
-      
-      p_vals[k, ] <- p_val
-    }
-    
-    avg_p_val <- mean(p_val)
-    
-    conf_int <- confint(model1, model2)
-    
-    p_values_for_comparison[[j]] <- avg_p_val
-    conf_intervals_for_comparison[[j]] <- conf_int
-  }
-  
-  pairwise_p_values[i, ] <- unlist(p_values_for_comparison)
-  pairwise_conf_intervals[[i]] <- conf_intervals_for_comparison
-  
-}
-
-
-
-
-
-
-
-```
 
 
 
